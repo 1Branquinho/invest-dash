@@ -2,7 +2,15 @@ import yfinance as yf
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+app = FastAPI(
+    title="InvestDash API",
+    description="Backend API for retrieving financial data and stock history.",
+    version="1.0.0",
+    contact={
+        "name": "InvestDash Developer",
+        "email": "dev@investdash.com",
+    },
+)
 
 origins = [
     "http://localhost:3000",
@@ -16,11 +24,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.get("/", tags=["Runner"])
 def health_check():
     return {"status": "ok", "message": "InvestDash API is running"}
 
-@app.get("/stock/{ticker}")
+@app.get("/stock/{ticker}", tags=["Stocks"])
 def get_stock_history(ticker: str):
     stock = yf.Ticker(ticker)
     history = stock.history(period="1mo")
@@ -36,3 +44,4 @@ def get_stock_history(ticker: str):
 
 
 #uvicorn main:app --reload
+#.\.venv\Scripts\activate
