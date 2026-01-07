@@ -23,15 +23,23 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
     <div className="p-6 rounded-xl bg-white/5 border border-white/10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <div className="flex items-baseline gap-2">
-            <h2 className="text-2xl font-bold">{data.ticker}</h2>
-            <span className="text-sm text-gray-400 font-medium hidden sm:inline-block">
-              {data.name}
-            </span>
+          <div className="flex items-center gap-3">
+            {data.logo && (
+              <img
+                src={data.logo}
+                alt={`${data.name} logo`}
+                className="w-10 h-10 rounded-full bg-white object-contain p-0.5"
+              />
+            )}
+            <div>
+              <h2 className="text-2xl font-bold flex items-baseline gap-2">
+                {data.ticker}
+              </h2>
+              <span className="text-sm text-gray-400 font-medium">
+                {data.name}
+              </span>
+            </div>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
-            Price History & Market Trend
-          </p>
         </div>
 
         <div className="flex bg-black/20 p-1 rounded-lg overflow-x-auto">

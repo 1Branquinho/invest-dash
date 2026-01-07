@@ -2,19 +2,19 @@ import yfinance as yf
 
 def fetch_stock_data(ticker: str, period: str):
     stock = yf.Ticker(ticker)
-    
-    
     history = stock.history(period=period)
     
     if history.empty:
         return None
 
-    
     try:
         
-        company_name = stock.info.get("longName", ticker.upper())
+        stock_info = stock.info
+        company_name = stock_info.get("longName", ticker.upper())
+        logo_url = stock_info.get("logo_url", "") 
     except:
         company_name = ticker.upper()
+        logo_url = ""
 
     last_quote = history.iloc[-1]
     
@@ -33,7 +33,8 @@ def fetch_stock_data(ticker: str, period: str):
         
     return {
         "ticker": ticker.upper(),
-        "name": company_name,  
+        "name": company_name,
+        "logo": logo_url,  
         "current_price": round(last_quote["Close"], 2),
         "change_percent": round(change_percent, 2),
         "high": round(history["High"].max(), 2),

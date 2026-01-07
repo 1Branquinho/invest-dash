@@ -5,7 +5,8 @@ export interface StockHistory {
 
 export interface StockData {
   ticker: string;
-  name: string; 
+  name: string;
+  logo: string;
   current_price: number;
   change_percent: number;
   high: number;

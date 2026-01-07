@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Search, AlertCircle } from "lucide-react";
 import { StockKPIs } from "@/components/StockKPIS";
 import { StockChart } from "../components/StockChart";
+import { SkeletonLoader } from "../components/SkeletonLoader";
 import { StockData } from "../types";
 
 export default function Home() {
@@ -25,8 +26,9 @@ export default function Home() {
         `http://localhost:8000/stock/${ticker}?period=${periodToUse}`
       );
 
-      if (response.status === 404) throw new Error("Ticker not found.");
-      if (!response.ok) throw new Error("Server error.");
+      if (response.status === 404)
+        throw new Error("Ticker not found. Please check the code.");
+      if (!response.ok) throw new Error("Failed to connect to the server.");
 
       const data = await response.json();
       setStockData(data);
@@ -85,7 +87,9 @@ export default function Home() {
           </div>
         )}
 
-        {stockData && !error && (
+        {loading && <SkeletonLoader />}
+
+        {!loading && stockData && !error && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <StockKPIs data={stockData} />
 
