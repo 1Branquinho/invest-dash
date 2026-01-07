@@ -3,6 +3,13 @@ export interface StockHistory {
   close: number;
 }
 
+export interface NewsItem {
+  title: string;
+  publisher: string;
+  link: string;
+  thumbnail: string;
+}
+
 export interface StockData {
   ticker: string;
   name: string;
@@ -11,5 +18,8 @@ export interface StockData {
   change_percent: number;
   high: number;
   low: number;
-  history: StockHistory[];
+  history: {
+    date: string;
+    close: number;
+  }[];
 }

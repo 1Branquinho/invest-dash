@@ -10,7 +10,7 @@ export function StockKPIs({ data }: Props) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="p-6 rounded-xl bg-white/5 border border-white/10 relative overflow-hidden">
+      <div className="p-6 rounded-xl glass-card relative overflow-hidden">
         <p className="text-gray-400 text-sm font-medium mb-1">Current Price</p>
         <div className="flex items-baseline gap-2">
           <span className="text-3xl font-bold">R$ {data.current_price}</span>
@@ -25,14 +25,14 @@ export function StockKPIs({ data }: Props) {
         </div>
       </div>
 
-      <div className="p-6 rounded-xl bg-white/5 border border-white/10">
+      <div className="p-6 rounded-xl glass-card">
         <p className="text-gray-400 text-sm font-medium mb-1">Period High</p>
         <span className="text-2xl font-semibold text-gray-200">
           R$ {data.high}
         </span>
       </div>
 
-      <div className="p-6 rounded-xl bg-white/5 border border-white/10">
+      <div className="p-6 rounded-xl glass-card">
         <p className="text-gray-400 text-sm font-medium mb-1">Period Low</p>
         <span className="text-2xl font-semibold text-gray-200">
           R$ {data.low}
