@@ -1,20 +1,13 @@
-import yfinance as yf
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from stock_service import fetch_stock_data
 
 app = FastAPI(
     title="InvestDash API",
-    description="Backend API for retrieving financial data and stock history.",
-    version="1.0.0",
-    contact={
-        "name": "InvestDash Developer",
-        "email": "dev@investdash.com",
-    },
+    version="1.0.0"
 )
 
-origins = [
-    "http://localhost:3000",
-]
+origins = ["http://localhost:3000"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -24,24 +17,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/", tags=["Runner"])
-def health_check():
-    return {"status": "ok", "message": "InvestDash API is running"}
-
-@app.get("/stock/{ticker}", tags=["Stocks"])
-def get_stock_history(ticker: str):
-    stock = yf.Ticker(ticker)
-    history = stock.history(period="1mo")
-    
-    data = []
-    for date, row in history.iterrows():
-        data.append({
-            "date": date.strftime("%Y-%m-%d"),
-            "close": row["Close"]
-        })
+@app.get("/stock/{ticker}")
+def get_stock_details(ticker: str, period: str = "1mo"):
+    try:
+        data = fetch_stock_data(ticker, period)
         
-    return {"ticker": ticker.upper(), "history": data}
+        if data is None:
+            raise HTTPException(status_code=404, detail="Ticker not found")
+            
+        return data
 
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 #uvicorn main:app --reload
 #.\.venv\Scripts\activate
