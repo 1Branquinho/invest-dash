@@ -19,90 +19,120 @@ def error_response(e):
         content={"error": {"code": e.code, "message": e.message}},
     )
 
+def is_probably_invalid_ticker(stock) -> bool:
+    try:
+        fi = stock.fast_info
+        if isinstance(fi, dict) and len(fi) > 0:
+            return False
+    except Exception:
+        pass
+
+    try:
+        info = stock.info
+        if isinstance(info, dict) and len(info) > 0:
+            return False
+    except Exception:
+        pass
+
+    return True
+
+def get_identity(stock, fallback: str):
+    name = fallback
+    logo = ""
+
+    try:
+        fi = stock.fast_info
+        if isinstance(fi, dict):
+            name = fi.get("longName") or fi.get("shortName") or name
+    except Exception:
+        pass
+
+    try:
+        info = stock.info
+        if isinstance(info, dict):
+            name = info.get("longName", name)
+            logo = info.get("logo_url", logo)
+    except Exception:
+        pass
+
+    return name, logo
+
 def create_stock_router(cache: TTLCache) -> APIRouter:
     @router.get("/{ticker}", response_model=StockResponse)
     def get_stock(ticker: str, period: Period = "1mo"):
+        t = sanitize_ticker(ticker)
+        p = str(period)
+
+        if not t:
+            return error_response(ValidationError("INVALID_TICKER", "Invalid ticker", 400))
+
+        if p not in ALLOWED_PERIODS:
+            return error_response(ValidationError("INVALID_PERIOD", "Invalid period", 400))
+
+        cache_key = f"{t}:{p}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            if isinstance(cached, dict) and cached.get("error"):
+                return JSONResponse(status_code=cached["status"], content=cached["error"])
+            return cached
+
         try:
-            t = sanitize_ticker(ticker)
-            p = str(period)
+            stock, history = fetch_history(t, p)
+        except Exception:
+            payload = {"error": {"code": "UPSTREAM_ERROR", "message": "Upstream provider failed"}}
+            cache.set(cache_key, {"status": 503, "error": payload}, ttl_seconds=15)
+            return JSONResponse(status_code=503, content=payload)
 
-            if not t:
-                raise ValidationError("INVALID_TICKER", "Invalid ticker", 400)
+        if history is None or history.empty:
+            if is_probably_invalid_ticker(stock):
+                payload = {"error": {"code": "NOT_FOUND", "message": "Ticker not found"}}
+                cache.set(cache_key, {"status": 404, "error": payload}, ttl_seconds=30)
+                return JSONResponse(status_code=404, content=payload)
 
-            if p not in ALLOWED_PERIODS:
-                raise ValidationError("INVALID_PERIOD", "Invalid period", 400)
+            payload = {"error": {"code": "UPSTREAM_NO_DATA", "message": "No data returned by upstream provider"}}
+            cache.set(cache_key, {"status": 503, "error": payload}, ttl_seconds=15)
+            return JSONResponse(status_code=503, content=payload)
 
-            key = f"{t}:{p}"
-            cached = cache.get(key)
-            if cached:
-                return cached
+        closes = history["Close"].astype(float).tolist()
+        dates = [d.strftime("%Y-%m-%d") for d in history.index]
 
-            try:
-                stock, history = fetch_history(t, p)
-            except Exception:
-                raise UpstreamError("UPSTREAM_ERROR", "Failed to fetch data", 503)
+        pr = period_return_percent(closes)
+        mdd, peak, trough = max_drawdown_percent(closes, dates)
 
-            if history is None or history.empty:
-                raise NotFoundError("NOT_FOUND", "Ticker not found", 404)
+        first_close = float(closes[0])
+        last_close = float(closes[-1])
 
-            closes = history["Close"].astype(float).tolist()
-            dates = [d.strftime("%Y-%m-%d") for d in history.index]
+        last_quote = history.iloc[-1]
+        if len(history) > 1:
+            prev_close = float(history.iloc[-2]["Close"])
+        else:
+            prev_close = float(last_quote["Close"])
 
-            pr = period_return_percent(closes)
-            mdd, peak, trough = max_drawdown_percent(closes, dates)
+        daily_change = ((float(last_quote["Close"]) - prev_close) / prev_close) * 100.0 if prev_close != 0 else 0.0
 
-            first_close = closes[0]
-            last_close = closes[-1]
+        name, logo = get_identity(stock, t)
 
-            last_quote = history.iloc[-1]
-            prev_close = history.iloc[-2]["Close"] if len(history) > 1 else last_quote["Close"]
-            daily_change = ((last_quote["Close"] - prev_close) / prev_close) * 100 if prev_close != 0 else 0
+        payload = StockResponse(
+            ticker=t,
+            name=name,
+            logo=logo,
+            current_price=round(float(last_quote["Close"]), 2),
+            change_percent=round(float(daily_change), 2),
+            high=round(float(history["High"].max()), 2),
+            low=round(float(history["Low"].min()), 2),
+            period=p,
+            period_start_date=dates[0],
+            period_end_date=dates[-1],
+            period_start_price=round(first_close, 2),
+            period_end_price=round(last_close, 2),
+            period_return_percent=round(float(pr), 2),
+            max_drawdown_percent=round(float(mdd), 2),
+            max_drawdown_peak_date=peak,
+            max_drawdown_trough_date=trough,
+            history=[{"date": dates[i], "close": round(float(closes[i]), 2)} for i in range(len(closes))],
+        )
 
-            name = t
-            logo = ""
-
-            try:
-                fi = stock.fast_info
-                if isinstance(fi, dict):
-                    name = fi.get("longName") or fi.get("shortName") or name
-            except Exception:
-                pass
-
-            try:
-                info = stock.info
-                if isinstance(info, dict):
-                    name = info.get("longName", name)
-                    logo = info.get("logo_url", "")
-            except Exception:
-                pass
-
-            payload = StockResponse(
-                ticker=t,
-                name=name,
-                logo=logo,
-                current_price=round(float(last_quote["Close"]), 2),
-                change_percent=round(float(daily_change), 2),
-                high=round(float(history["High"].max()), 2),
-                low=round(float(history["Low"].min()), 2),
-                period=p,
-                period_start_date=dates[0],
-                period_end_date=dates[-1],
-                period_start_price=round(first_close, 2),
-                period_end_price=round(last_close, 2),
-                period_return_percent=round(pr, 2),
-                max_drawdown_percent=round(mdd, 2),
-                max_drawdown_peak_date=peak,
-                max_drawdown_trough_date=trough,
-                history=[
-                    {"date": dates[i], "close": round(closes[i], 2)}
-                    for i in range(len(closes))
-                ],
-            )
-
-            cache.set(key, payload)
-            return payload
-
-        except (ValidationError, NotFoundError, UpstreamError) as e:
-            return error_response(e)
+        cache.set(cache_key, payload)
+        return payload
 
     return router
