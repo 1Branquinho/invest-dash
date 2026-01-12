@@ -1,42 +1,67 @@
-import { ArrowUp, ArrowDown } from "lucide-react";
 import { StockData } from "../types";
 
-interface Props {
+type Props = {
   data: StockData;
+};
+
+function formatPercent(v: number) {
+  const sign = v > 0 ? "+" : "";
+  return `${sign}${v.toFixed(2)}%`;
+}
+
+function formatMoney(v: number) {
+  return `$${v.toFixed(2)}`;
 }
 
 export function StockKPIs({ data }: Props) {
-  const isPositive = data.change_percent >= 0;
+  const isReturnPositive = data.period_return_percent >= 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div className="p-6 rounded-xl glass-card relative overflow-hidden">
-        <p className="text-gray-400 text-sm font-medium mb-1">Current Price</p>
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold">R$ {data.current_price}</span>
-          <span
-            className={`flex items-center text-sm font-bold ${
-              isPositive ? "text-green-400" : "text-red-400"
-            }`}
-          >
-            {isPositive ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
-            {Math.abs(data.change_percent)}%
-          </span>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="glass-card p-5 rounded-xl">
+        <div className="text-sm text-gray-400">Current Price</div>
+        <div className="text-2xl font-bold">
+          {formatMoney(data.current_price)}
+        </div>
+        <div className="text-sm text-gray-500">
+          Daily: {formatPercent(data.change_percent)}
         </div>
       </div>
 
-      <div className="p-6 rounded-xl glass-card">
-        <p className="text-gray-400 text-sm font-medium mb-1">Period High</p>
-        <span className="text-2xl font-semibold text-gray-200">
-          R$ {data.high}
-        </span>
+      <div className="glass-card p-5 rounded-xl">
+        <div className="text-sm text-gray-400">Period Return</div>
+        <div
+          className={`text-2xl font-bold ${
+            isReturnPositive ? "text-green-400" : "text-red-400"
+          }`}
+        >
+          {formatPercent(data.period_return_percent)}
+        </div>
+        <div className="text-sm text-gray-500">
+          {data.period_start_date} → {data.period_end_date}
+        </div>
       </div>
 
-      <div className="p-6 rounded-xl glass-card">
-        <p className="text-gray-400 text-sm font-medium mb-1">Period Low</p>
-        <span className="text-2xl font-semibold text-gray-200">
-          R$ {data.low}
-        </span>
+      <div className="glass-card p-5 rounded-xl">
+        <div className="text-sm text-gray-400">Max Drawdown</div>
+        <div className="text-2xl font-bold text-red-400">
+          {formatPercent(data.max_drawdown_percent)}
+        </div>
+        <div className="text-sm text-gray-500">
+          Peak {data.max_drawdown_peak_date} → Trough{" "}
+          {data.max_drawdown_trough_date}
+        </div>
+      </div>
+
+      <div className="glass-card p-5 rounded-xl">
+        <div className="text-sm text-gray-400">Period Range</div>
+        <div className="text-2xl font-bold">
+          {formatMoney(data.low)} – {formatMoney(data.high)}
+        </div>
+        <div className="text-sm text-gray-500">
+          Start {formatMoney(data.period_start_price)} | End{" "}
+          {formatMoney(data.period_end_price)}
+        </div>
       </div>
     </div>
   );

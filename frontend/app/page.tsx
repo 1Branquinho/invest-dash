@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { Search, AlertCircle, TrendingUp } from "lucide-react";
-import { StockKPIs } from "@/components/StockKPIS";
-import { StockChart } from "@/components/StockChart";
-import { SkeletonLoader } from "@/components/SkeletonLoader";
-import { StockData } from "@/types";
+import { StockKPIs } from "../components/StockKPIS";
+import { StockChart } from "../components/StockChart";
+import { SkeletonLoader } from "../components/SkeletonLoader";
+import { StockData, ApiError } from "../types";
+import { buildStockUrl } from "../lib/api";
 
 export default function Home() {
   const [ticker, setTicker] = useState("");
@@ -16,24 +17,29 @@ export default function Home() {
 
   async function fetchStock(customPeriod?: string) {
     const periodToUse = customPeriod || period;
-    if (!ticker.trim()) return;
+    const t = ticker.trim();
+    if (!t) return;
 
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch(
-        `http://localhost:8000/stock/${ticker}?period=${periodToUse}`
-      );
+      const response = await fetch(buildStockUrl(t, periodToUse));
 
-      if (response.status === 404) throw new Error("Ticker not found.");
-      if (!response.ok) throw new Error("Server error.");
+      if (!response.ok) {
+        const maybeJson = (await response
+          .json()
+          .catch(() => null)) as ApiError | null;
+        if (maybeJson?.error?.message) throw new Error(maybeJson.error.message);
+        if (response.status === 404) throw new Error("Ticker not found.");
+        throw new Error("Server error.");
+      }
 
-      const data = await response.json();
+      const data = (await response.json()) as StockData;
       setStockData(data);
     } catch (err: any) {
       setStockData(null);
-      setError(err.message);
+      setError(err?.message || "Unexpected error.");
     } finally {
       setLoading(false);
     }
@@ -102,7 +108,6 @@ export default function Home() {
         {!loading && stockData && !error && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
             <StockKPIs data={stockData} />
-
             <StockChart
               data={stockData}
               period={period}

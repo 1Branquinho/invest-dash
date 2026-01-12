@@ -9,11 +9,11 @@ import {
 } from "recharts";
 import { StockData } from "../types";
 
-interface Props {
+type Props = {
   data: StockData;
   period: string;
   onPeriodChange: (p: string) => void;
-}
+};
 
 export function StockChart({ data, period, onPeriodChange }: Props) {
   const isPositive = data.change_percent >= 0;
@@ -68,11 +68,13 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
                 <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
               </linearGradient>
             </defs>
+
             <CartesianGrid
               strokeDasharray="3 3"
               stroke="#ffffff10"
               vertical={false}
             />
+
             <XAxis
               dataKey="date"
               stroke="#525252"
@@ -88,12 +90,14 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
               }}
               tickMargin={10}
             />
+
             <YAxis
               stroke="#525252"
-              tickFormatter={(val) => `R$${val}`}
+              tickFormatter={(val) => `$${val}`}
               domain={["auto", "auto"]}
               tick={{ fontSize: 12 }}
             />
+
             <Tooltip
               contentStyle={{
                 backgroundColor: "#171717",
@@ -103,6 +107,7 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
               itemStyle={{ color: "#fff" }}
               labelFormatter={(label) => new Date(label).toLocaleDateString()}
             />
+
             <Area
               type="monotone"
               dataKey="close"
