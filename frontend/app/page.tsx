@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, AlertCircle, TrendingUp } from "lucide-react";
+import { Search, AlertCircle, TrendingUp, Sparkles } from "lucide-react";
 import { StockKPIs } from "../components/StockKPIS";
 import { StockChart } from "../components/StockChart";
 import { SkeletonLoader } from "../components/SkeletonLoader";
@@ -15,9 +15,17 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  function getErrorMessage(status: number, apiError: ApiError | null) {
+    if (apiError?.error?.message) return apiError.error.message;
+    if (status === 404) return "Ticker not found. Try another symbol.";
+    if (status === 503) return "Data provider unavailable. Try again in a few seconds.";
+    if (status === 422) return "Invalid input.";
+    return "Unexpected server error.";
+  }
+
   async function fetchStock(customPeriod?: string) {
     const periodToUse = customPeriod || period;
-    const t = ticker.trim();
+    const t = ticker.trim().toUpperCase();
     if (!t) return;
 
     setLoading(true);
@@ -27,12 +35,8 @@ export default function Home() {
       const response = await fetch(buildStockUrl(t, periodToUse));
 
       if (!response.ok) {
-        const maybeJson = (await response
-          .json()
-          .catch(() => null)) as ApiError | null;
-        if (maybeJson?.error?.message) throw new Error(maybeJson.error.message);
-        if (response.status === 404) throw new Error("Ticker not found.");
-        throw new Error("Server error.");
+        const maybeJson = (await response.json().catch(() => null)) as ApiError | null;
+        throw new Error(getErrorMessage(response.status, maybeJson));
       }
 
       const data = (await response.json()) as StockData;
@@ -51,6 +55,9 @@ export default function Home() {
       fetchStock(newPeriod);
     }
   }
+
+  const hasResult = !!stockData && !loading && !error;
+  const isEmptyState = !stockData && !loading && !error;
 
   return (
     <div className="min-h-screen bg-black text-gray-100 font-sans selection:bg-blue-500/30 relative overflow-hidden">
@@ -73,19 +80,17 @@ export default function Home() {
 
           <div className="flex w-full md:w-auto gap-2">
             <div className="relative flex-1 md:w-80">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={18}
-              />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type="text"
-                placeholder="Search ticker (e.g. BTC-USD, NVDA)"
+                placeholder="Search ticker (e.g. BTC-USD, AAPL, NVDA)"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/40 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-600 text-sm"
                 value={ticker}
                 onChange={(e) => setTicker(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && fetchStock()}
               />
             </div>
+
             <button
               onClick={() => fetchStock()}
               disabled={loading}
@@ -97,22 +102,43 @@ export default function Home() {
         </header>
 
         {error && (
-          <div className="glass-card border-l-4 border-l-red-500 text-red-400 p-4 rounded-xl flex items-center gap-3">
-            <AlertCircle size={20} />
-            <span>{error}</span>
+          <div className="glass-card border border-white/10 p-4 rounded-2xl flex items-start gap-3">
+            <div className="bg-red-500/15 rounded-xl p-2 mt-0.5">
+              <AlertCircle size={18} className="text-red-400" />
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-gray-100">Request failed</div>
+              <div className="text-sm text-gray-400">{error}</div>
+              <div className="text-xs text-gray-500 mt-1">Try another ticker or wait a few seconds.</div>
+            </div>
           </div>
         )}
 
         {loading && <SkeletonLoader />}
 
-        {!loading && stockData && !error && (
+        {isEmptyState && (
+          <div className="glass-card p-8 rounded-2xl border border-white/10">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/10 rounded-2xl p-3">
+                <Sparkles size={20} className="text-gray-200" />
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-gray-100">Ready</div>
+                <div className="text-sm text-gray-400">Search for a ticker to begin.</div>
+              </div>
+            </div>
+
+            <div className="mt-5 text-sm text-gray-500">
+              Examples: <span className="text-gray-300">AAPL</span>, <span className="text-gray-300">NVDA</span>,{" "}
+              <span className="text-gray-300">BTC-USD</span>
+            </div>
+          </div>
+        )}
+
+        {hasResult && stockData && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
             <StockKPIs data={stockData} />
-            <StockChart
-              data={stockData}
-              period={period}
-              onPeriodChange={handlePeriodChange}
-            />
+            <StockChart data={stockData} period={period} onPeriodChange={handlePeriodChange} />
           </div>
         )}
       </div>

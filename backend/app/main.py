@@ -26,5 +26,5 @@ def health():
     return {"status": "ok"}
 
 
-#uvicorn main:app --reload
+#python -m uvicorn app.main:app --reload
 #.\.venv\Scripts\activate

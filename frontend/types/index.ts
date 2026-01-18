@@ -1,31 +1,36 @@
-export type StockHistoryPoint = {
+export interface StockHistoryPoint {
   date: string;
   close: number;
-};
+}
 
-export type StockData = {
+export interface StockData {
   ticker: string;
   name: string;
   logo: string;
+
   current_price: number;
   change_percent: number;
-  high: number;
-  low: number;
-  period: "5d" | "1mo" | "6mo" | "1y" | "5y" | "max";
+
+  period_return_percent: number;
   period_start_date: string;
   period_end_date: string;
   period_start_price: number;
   period_end_price: number;
-  period_return_percent: number;
+
   max_drawdown_percent: number;
   max_drawdown_peak_date: string;
   max_drawdown_trough_date: string;
-  history: StockHistoryPoint[];
-};
 
-export type ApiError = {
-  error: {
-    code: string;
-    message: string;
+  volatility_percent: number;
+
+  high: number;
+  low: number;
+
+  history: StockHistoryPoint[];
+}
+
+export interface ApiError {
+  error?: {
+    message?: string;
   };
-};
+}
