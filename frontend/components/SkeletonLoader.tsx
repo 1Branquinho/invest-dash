@@ -13,7 +13,10 @@ export function SkeletonLoader() {
 
         <div className="mt-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-black/30 border border-white/10 p-4">
+            <div
+              key={i}
+              className="rounded-xl bg-black/30 border border-white/10 p-4"
+            >
               <div className="h-3 w-28 bg-white/10 rounded mb-4" />
               <div className="h-7 w-44 bg-white/10 rounded mb-2" />
               <div className="h-4 w-56 bg-white/10 rounded" />

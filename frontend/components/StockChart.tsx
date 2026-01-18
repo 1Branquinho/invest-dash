@@ -28,7 +28,8 @@ function formatPercent(v: number) {
 
 function toShortDate(label: string, period: string) {
   const d = new Date(label);
-  if (period === "5d" || period === "1mo") return `${d.getDate()}/${d.getMonth() + 1}`;
+  if (period === "5d" || period === "1mo")
+    return `${d.getDate()}/${d.getMonth() + 1}`;
   return `${d.getMonth() + 1}/${d.getFullYear().toString().slice(2)}`;
 }
 
@@ -50,10 +51,14 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-            <span className="text-sm font-semibold text-gray-200">{data.ticker.slice(0, 2)}</span>
+            <span className="text-sm font-semibold text-gray-200">
+              {data.ticker.slice(0, 2)}
+            </span>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-gray-500">Price Chart</div>
+            <div className="text-xs uppercase tracking-wide text-gray-500">
+              Price Chart
+            </div>
             <div className="text-lg font-semibold text-gray-100">
               {data.ticker} · {period.toUpperCase()}
             </div>
@@ -65,7 +70,11 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="text-sm text-gray-400">
-            Showing last <span className="text-gray-200 font-semibold">{period.toUpperCase()}</span> of data
+            Showing last{" "}
+            <span className="text-gray-200 font-semibold">
+              {period.toUpperCase()}
+            </span>{" "}
+            of data
           </div>
 
           <div className="flex bg-black/20 p-1 rounded-xl overflow-x-auto border border-white/10">
@@ -96,7 +105,11 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
               </linearGradient>
             </defs>
 
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#ffffff10"
+              vertical={false}
+            />
 
             <XAxis
               dataKey="date"
@@ -124,7 +137,7 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
               labelStyle={{ color: "#a3a3a3" }}
               formatter={(value: any, name: any, props: any) => {
                 const close = Number(value);
-                const ret = firstClose ? ((close / firstClose) - 1) * 100 : 0;
+                const ret = firstClose ? (close / firstClose - 1) * 100 : 0;
                 return [
                   `${formatMoney(close)} · ${formatPercent(ret)}`,
                   "Close",
@@ -134,7 +147,11 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
             />
 
             {data.period_start_date ? (
-              <ReferenceLine x={data.period_start_date} stroke="#ffffff14" strokeDasharray="4 4" />
+              <ReferenceLine
+                x={data.period_start_date}
+                stroke="#ffffff14"
+                strokeDasharray="4 4"
+              />
             ) : null}
 
             {peakPoint ? (
