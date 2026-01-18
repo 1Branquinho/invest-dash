@@ -1,4 +1,10 @@
-import { TrendingUp, ShieldAlert, Activity, ArrowUpRight } from "lucide-react";
+import {
+  TrendingUp,
+  ShieldAlert,
+  Activity,
+  ArrowUpRight,
+  Star,
+} from "lucide-react";
 import { StockData } from "../types";
 import {
   formatMoney,
@@ -9,9 +15,17 @@ import {
 
 type Props = {
   data: StockData;
+  moneyPrefix: string;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
 };
 
-export function StockKPIs({ data }: Props) {
+export function StockKPIs({
+  data,
+  moneyPrefix,
+  isFavorite,
+  onToggleFavorite,
+}: Props) {
   const days = daysBetween(data.period_start_date, data.period_end_date);
   const cagr = cagrPercent(
     data.period_start_price,
@@ -35,17 +49,31 @@ export function StockKPIs({ data }: Props) {
           </div>
         </div>
 
-        <div className="rounded-2xl bg-black/30 border border-white/10 p-4 min-w-[280px]">
-          <div className="text-xs uppercase tracking-wide text-gray-500">
-            Current Price
-          </div>
-          <div className="mt-1 text-4xl font-extrabold text-gray-100">
-            {formatMoney(data.current_price)}
-          </div>
-          <div
-            className={`mt-1 text-sm ${data.change_percent >= 0 ? "text-green-400" : "text-red-400"}`}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onToggleFavorite}
+            className={`px-3 py-2 rounded-xl border transition flex items-center gap-2 ${
+              isFavorite
+                ? "bg-yellow-500/15 border-yellow-500/30 text-yellow-300"
+                : "bg-white/5 border-white/10 text-gray-200 hover:bg-white/10"
+            }`}
           >
-            Daily: {formatPercent(data.change_percent)}
+            <Star size={16} />
+            {isFavorite ? "Saved" : "Save"}
+          </button>
+
+          <div className="rounded-2xl bg-black/30 border border-white/10 p-4 min-w-[280px]">
+            <div className="text-xs uppercase tracking-wide text-gray-500">
+              Current Price
+            </div>
+            <div className="mt-1 text-4xl font-extrabold text-gray-100">
+              {formatMoney(data.current_price, moneyPrefix)}
+            </div>
+            <div
+              className={`mt-1 text-sm ${data.change_percent >= 0 ? "text-green-400" : "text-red-400"}`}
+            >
+              Daily: {formatPercent(data.change_percent)}
+            </div>
           </div>
         </div>
       </div>
@@ -72,8 +100,8 @@ export function StockKPIs({ data }: Props) {
           </div>
 
           <div className="mt-2 text-sm text-gray-400">
-            Start {formatMoney(data.period_start_price)} · End{" "}
-            {formatMoney(data.period_end_price)}
+            Start {formatMoney(data.period_start_price, moneyPrefix)} · End{" "}
+            {formatMoney(data.period_end_price, moneyPrefix)}
           </div>
 
           <div className="mt-1 text-xs text-gray-500">
@@ -99,10 +127,6 @@ export function StockKPIs({ data }: Props) {
             Peak {data.max_drawdown_peak_date} → Trough{" "}
             {data.max_drawdown_trough_date}
           </div>
-
-          <div className="mt-2 text-xs text-gray-500">
-            Worst peak-to-trough loss in period
-          </div>
         </div>
 
         <div className="rounded-2xl bg-black/30 border border-white/10 p-4">
@@ -122,9 +146,6 @@ export function StockKPIs({ data }: Props) {
           <div className="mt-2 text-sm text-gray-400">
             Std dev of daily returns
           </div>
-          <div className="mt-1 text-xs text-gray-500">
-            Higher means more price variability
-          </div>
         </div>
 
         <div className="rounded-2xl bg-black/30 border border-white/10 p-4">
@@ -138,12 +159,8 @@ export function StockKPIs({ data }: Props) {
           </div>
 
           <div className="mt-2 text-3xl font-bold text-gray-100">
-            {formatMoney(data.low)} — {formatMoney(data.high)}
-          </div>
-
-          <div className="mt-2 text-sm text-gray-400">Low → High in period</div>
-          <div className="mt-1 text-xs text-gray-500">
-            Useful for range context
+            {formatMoney(data.low, moneyPrefix)} —{" "}
+            {formatMoney(data.high, moneyPrefix)}
           </div>
         </div>
       </div>

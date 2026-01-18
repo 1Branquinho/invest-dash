@@ -6,86 +6,135 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
-  ReferenceLine,
-  ReferenceDot,
 } from "recharts";
+import { Download } from "lucide-react";
 import { StockData } from "../types";
 
 type Props = {
   data: StockData;
+  compareData?: StockData | null;
   period: string;
   onPeriodChange: (p: string) => void;
+  moneyPrefix: string;
 };
 
-function formatMoney(v: number) {
-  return `$${v.toFixed(2)}`;
+type MergedPoint = {
+  date: string;
+  primary?: number;
+  secondary?: number;
+};
+
+function mergeSeries(
+  primary: StockData,
+  secondary?: StockData | null,
+): MergedPoint[] {
+  const map = new Map<string, MergedPoint>();
+
+  for (const p of primary.history) {
+    map.set(p.date, { date: p.date, primary: p.close });
+  }
+
+  if (secondary) {
+    for (const p of secondary.history) {
+      const existing = map.get(p.date);
+      if (existing) existing.secondary = p.close;
+      else map.set(p.date, { date: p.date, secondary: p.close });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function formatPercent(v: number) {
-  const sign = v > 0 ? "+" : "";
-  return `${sign}${v.toFixed(2)}%`;
+function downloadCSV(filename: string, rows: string[][]) {
+  const content = rows
+    .map((r) => r.map((c) => `"${String(c).replaceAll(`"`, `""`)}"`).join(","))
+    .join("\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
-function toShortDate(label: string, period: string) {
-  const d = new Date(label);
-  if (period === "5d" || period === "1mo")
-    return `${d.getDate()}/${d.getMonth() + 1}`;
-  return `${d.getMonth() + 1}/${d.getFullYear().toString().slice(2)}`;
-}
-
-function findPoint(history: { date: string; close: number }[], date: string) {
-  return history.find((p) => p.date === date) || null;
-}
-
-export function StockChart({ data, period, onPeriodChange }: Props) {
+export function StockChart({
+  data,
+  compareData,
+  period,
+  onPeriodChange,
+  moneyPrefix,
+}: Props) {
   const isPositive = data.change_percent >= 0;
   const trendColor = isPositive ? "#22c55e" : "#ef4444";
+  const compareColor = "#60a5fa";
 
-  const peakPoint = findPoint(data.history, data.max_drawdown_peak_date);
-  const troughPoint = findPoint(data.history, data.max_drawdown_trough_date);
+  const merged = mergeSeries(data, compareData);
 
-  const firstClose = data.history.length ? data.history[0].close : 0;
+  function handleExport() {
+    const header = [
+      "date",
+      data.ticker,
+      compareData ? compareData.ticker : "",
+    ].filter((x) => x !== "");
+    const rows: string[][] = [header];
+
+    for (const p of merged) {
+      const r: string[] = [p.date];
+      r.push(typeof p.primary === "number" ? String(p.primary) : "");
+      if (compareData)
+        r.push(typeof p.secondary === "number" ? String(p.secondary) : "");
+      rows.push(r);
+    }
+
+    const name = compareData
+      ? `${data.ticker}_vs_${compareData.ticker}_${period}.csv`
+      : `${data.ticker}_${period}.csv`;
+    downloadCSV(name, rows);
+  }
 
   return (
-    <div className="p-6 rounded-2xl glass-card">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-5">
+    <div className="p-6 rounded-2xl glass-card border border-white/10">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-            <span className="text-sm font-semibold text-gray-200">
-              {data.ticker.slice(0, 2)}
-            </span>
-          </div>
+          {data.logo && (
+            <img
+              src={data.logo}
+              alt={`${data.name} logo`}
+              className="w-10 h-10 rounded-full bg-white object-contain p-0.5"
+            />
+          )}
           <div>
-            <div className="text-xs uppercase tracking-wide text-gray-500">
-              Price Chart
-            </div>
-            <div className="text-lg font-semibold text-gray-100">
-              {data.ticker} · {period.toUpperCase()}
-            </div>
-            <div className="text-sm text-gray-400">
-              {data.period_start_date} → {data.period_end_date}
-            </div>
+            <h2 className="text-2xl font-bold">{data.ticker}</h2>
+            <div className="text-sm text-gray-400 font-medium">{data.name}</div>
+            {compareData && (
+              <div className="text-xs text-gray-500 mt-1">
+                Overlay: {data.ticker} + {compareData.ticker}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="text-sm text-gray-400">
-            Showing last{" "}
-            <span className="text-gray-200 font-semibold">
-              {period.toUpperCase()}
-            </span>{" "}
-            of data
-          </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleExport}
+            className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-200 hover:bg-white/10 transition flex items-center gap-2"
+          >
+            <Download size={16} />
+            Export CSV
+          </button>
 
-          <div className="flex bg-black/20 p-1 rounded-xl overflow-x-auto border border-white/10">
+          <div className="flex bg-black/20 p-1 rounded-lg overflow-x-auto">
             {["5d", "1mo", "6mo", "1y", "5y", "max"].map((p) => (
               <button
                 key={p}
                 onClick={() => onPeriodChange(p)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all whitespace-nowrap ${
                   period === p
-                    ? "bg-white text-black shadow-sm"
-                    : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
+                    ? "bg-white/10 text-white shadow-sm"
+                    : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
                 }`}
               >
                 {p.toUpperCase()}
@@ -97,11 +146,15 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
 
       <div className="h-[420px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data.history}>
+          <AreaChart data={merged}>
             <defs>
-              <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={trendColor} stopOpacity={0.28} />
+              <linearGradient id="primaryFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={trendColor} stopOpacity={0.25} />
                 <stop offset="95%" stopColor={trendColor} stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="secondaryFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={compareColor} stopOpacity={0.18} />
+                <stop offset="95%" stopColor={compareColor} stopOpacity={0} />
               </linearGradient>
             </defs>
 
@@ -115,93 +168,61 @@ export function StockChart({ data, period, onPeriodChange }: Props) {
               dataKey="date"
               stroke="#525252"
               tick={{ fontSize: 12 }}
-              tickFormatter={(val) => toShortDate(val, period)}
+              tickFormatter={(val) => {
+                const d = new Date(val);
+                return period === "5d" || period === "1mo"
+                  ? `${d.getDate()}/${d.getMonth() + 1}`
+                  : `${d.getMonth() + 1}/${d.getFullYear().toString().slice(2)}`;
+              }}
               tickMargin={10}
             />
 
             <YAxis
               stroke="#525252"
-              tickFormatter={(val) => `$${val}`}
+              tickFormatter={(val) => `${moneyPrefix}${val}`}
               domain={["auto", "auto"]}
               tick={{ fontSize: 12 }}
-              width={70}
             />
 
             <Tooltip
               contentStyle={{
-                backgroundColor: "#0b0b0b",
-                border: "1px solid #262626",
-                borderRadius: "12px",
+                backgroundColor: "#171717",
+                border: "1px solid #333",
+                borderRadius: "8px",
               }}
               itemStyle={{ color: "#fff" }}
-              labelStyle={{ color: "#a3a3a3" }}
-              formatter={(value: any, name: any, props: any) => {
-                const close = Number(value);
-                const ret = firstClose ? (close / firstClose - 1) * 100 : 0;
-                return [
-                  `${formatMoney(close)} · ${formatPercent(ret)}`,
-                  "Close",
-                ];
-              }}
               labelFormatter={(label) => new Date(label).toLocaleDateString()}
+              formatter={(value: any, name: any) => [
+                `${moneyPrefix}${Number(value).toFixed(2)}`,
+                String(name),
+              ]}
             />
-
-            {data.period_start_date ? (
-              <ReferenceLine
-                x={data.period_start_date}
-                stroke="#ffffff14"
-                strokeDasharray="4 4"
-              />
-            ) : null}
-
-            {peakPoint ? (
-              <ReferenceDot
-                x={peakPoint.date}
-                y={peakPoint.close}
-                r={5}
-                fill="#f59e0b"
-                stroke="#0b0b0b"
-                strokeWidth={2}
-              />
-            ) : null}
-
-            {troughPoint ? (
-              <ReferenceDot
-                x={troughPoint.date}
-                y={troughPoint.close}
-                r={5}
-                fill="#ef4444"
-                stroke="#0b0b0b"
-                strokeWidth={2}
-              />
-            ) : null}
 
             <Area
               type="monotone"
-              dataKey="close"
+              dataKey="primary"
+              name={data.ticker}
               stroke={trendColor}
-              fill="url(#priceFill)"
+              fillOpacity={1}
+              fill="url(#primaryFill)"
               strokeWidth={2}
+              connectNulls
             />
+
+            {compareData && (
+              <Area
+                type="monotone"
+                dataKey="secondary"
+                name={compareData.ticker}
+                stroke={compareColor}
+                fillOpacity={1}
+                fill="url(#secondaryFill)"
+                strokeWidth={2}
+                connectNulls
+              />
+            )}
           </AreaChart>
         </ResponsiveContainer>
-      </div>
-
-      <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-sm text-gray-400">
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span>Drawdown Peak</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" />
-            <span>Drawdown Trough</span>
-          </div>
-        </div>
-
-        <div className="text-gray-500">
-          Tooltip shows close price and cumulative return from period start
-        </div>
       </div>
     </div>
   );
